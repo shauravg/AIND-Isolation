@@ -170,6 +170,38 @@ class MinimaxPlayer(IsolationPlayer):
         # Return the best move from the last completed search iteration
         return best_move
 
+    def timer(self):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+    def min(self, game, depth):
+        self.timer()
+        moves_left = game.get_legal_moves()
+        if len(moves_left) == 0 or depth == 0:
+            return self.score(game, self)
+
+        infinity = float("inf")
+        min_val = infinity
+        for move in moves_left:
+            newboard = game.forecast_move(move)
+            min_val = min(min_val, self.max(newboard, depth - 1))
+
+        return min_val
+
+    def max(self, game, depth):
+        self.timer()
+        moves_left = game.get_legal_moves()
+        if len(moves_left) == 0 or depth == 0:
+            return self.score(game, self)
+
+        neg_infinity = float("-inf")
+        max_val = neg_infinity
+        for move in moves_left:
+            newboard = game.forecast_move(move)
+            max_val = max(max_val, self.min(newboard, depth - 1))
+
+        return max_val
+
     def minimax(self, game, depth):
         """Implement depth-limited minimax search algorithm as described in
         the lectures.
@@ -209,11 +241,15 @@ class MinimaxPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
+        self.timer()
+        default_move = (-1, -1)
+        moves_left = game.get_legal_moves()
+        if len(moves_left) == 0:
+            return default_move
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        return max(moves_left, key=lambda m: self.min(game.forecast_move(m), depth - 1))
+
+
 
 
 class AlphaBetaPlayer(IsolationPlayer):
