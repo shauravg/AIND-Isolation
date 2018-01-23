@@ -446,7 +446,7 @@ class AlphaBetaPlayer(IsolationPlayer):
         for move in game.get_legal_moves():
             newboard = game.forecast_move(move)
             v = self.minvalue(newboard, alpha, beta, depth - 1)
-            if v >= best_score:
+            if v > best_score:
                 best_move = move
                 best_score = v
             alpha = max(alpha, best_score)
