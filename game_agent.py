@@ -112,7 +112,7 @@ class IsolationPlayer:
         positive value large enough to allow the function to return before the
         timer expires.
     """
-    def __init__(self, search_depth=3, score_fn=custom_score, timeout=10.):
+    def __init__(self, search_depth=3, score_fn=custom_score, timeout=20.):
         self.search_depth = search_depth
         self.score = score_fn
         self.time_left = None
@@ -290,8 +290,60 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        default_move = (-1, -1)
+        best_prediction = default_move
+        depth = 1
+
+        try:
+            while True:
+                predicted_move = self.alphabeta(game, depth)
+                if(predicted_move == default_move):
+                    return best_prediction
+                else:
+                    best_prediction = predicted_move
+                depth += 1
+        except SearchTimeout:
+            return best_prediction
+
+        return best_prediction
+
+    def timer(self):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+    def maxvalue(self, game, alpha, beta, depth):
+        self.timer()
+        moves_left = game.get_legal_moves()
+        if len(moves_left) == 0 or depth == 0:
+            return self.score(game, self)
+
+        neg_infinity = float("-inf")
+        v = neg_infinity
+
+        for move in moves_left:
+            v = max(v, self.minvalue(game.forecast_move(move), alpha, beta, depth - 1))
+            if v >= beta:
+                return v
+            alpha = max(alpha, v)
+
+        return v
+
+    def minvalue(self, game, alpha, beta, depth):
+        self.timer()
+        moves_left = game.get_legal_moves()
+        if len(moves_left) == 0 or depth == 0:
+            return self.score(game, self)
+
+        infinity = float("inf")
+        v = infinity
+
+        for move in moves_left:
+            v = min(v, self.maxvalue(game.forecast_move(move), alpha, beta, depth - 1))
+            if v <= alpha:
+                return v
+            beta = min(beta, v)
+
+        return v
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -338,8 +390,19 @@ class AlphaBetaPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
+        self.timer()
+        default_move = (-1, -1)
+        best_move = default_move
+        moves_left = game.get_legal_moves()
+        if len(moves_left) == 0:
+            return default_move
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        for move in moves_left:
+            v = self.minvalue(game.forecast_move(move), alpha, beta, depth)
+            if v > alpha:
+                alpha = v
+                best_move = move
+
+        return best_move
+
+        
