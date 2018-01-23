@@ -35,7 +35,27 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = game.get_legal_moves(player)
+    own_v_wall = [move for move in own_moves if move[0] == 0
+                                             or move[0] == (game.height - 1)
+                                             or move[1] == 0
+                                             or move[1] == (game.width - 1)]
+
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
+    opp_v_wall = [move for move in opp_moves if move[0] == 0
+                                             or move[0] == (game.height - 1)
+                                             or move[1] == 0
+                                             or move[1] == (game.width - 1)]
+    
+    # Penalize/reward move count if some moves are against the wall
+    return float(len(own_moves) - len(own_v_wall)
+                 - len(opp_moves) + len(opp_v_wall))
 
 
 def custom_score_2(game, player):
@@ -61,8 +81,28 @@ def custom_score_2(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_winner(player):
+        return float('inf')
+    if game.is_loser(player):
+        return float('-inf')
 
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+
+    factor = 1.
+    percent_over = float(len(game.get_blank_spaces())) / (game.width * game.height)
+    if percent_over <= .5:
+        factor = 1.05
+    elif percent_over <= .3:
+        factor = 1.3
+    elif percent_over <= .1:
+        factor = 1.6
+
+    return own_moves - (factor * opp_moves)
+
+def centrality(game, position):
+    w, h = game.width / 2., game.height / 2.
+    return float((h - position[1])**2 + (w - position[0])**2)
 
 def custom_score_3(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -87,7 +127,16 @@ def custom_score_3(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_winner(player):
+        return float('inf')
+    if game.is_loser(player):
+        return float('-inf')
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    own_pos = game.get_player_location(player)
+    return float(own_moves - opp_moves + centrality(game, own_pos))
+
 
 
 class IsolationPlayer:
@@ -290,20 +339,18 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        default_move = (-1, -1)
-        best_prediction = default_move
+        best_prediction = (-1, -1)
+        if not game.get_legal_moves():
+            return best_prediction
+
         depth = 1
 
-        try:
-            while True:
-                predicted_move = self.alphabeta(game, depth)
-                if(predicted_move == default_move):
-                    return best_prediction
-                else:
-                    best_prediction = predicted_move
+        while True:
+            try:
+                best_prediction = self.alphabeta(game, depth)
                 depth += 1
-        except SearchTimeout:
-            return best_prediction
+            except SearchTimeout:
+                break
 
         return best_prediction
 
@@ -325,7 +372,6 @@ class AlphaBetaPlayer(IsolationPlayer):
             if v >= beta:
                 return v
             alpha = max(alpha, v)
-
         return v
 
     def minvalue(self, game, alpha, beta, depth):
@@ -342,7 +388,6 @@ class AlphaBetaPlayer(IsolationPlayer):
             if v <= alpha:
                 return v
             beta = min(beta, v)
-
         return v
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
@@ -391,18 +436,19 @@ class AlphaBetaPlayer(IsolationPlayer):
                 testing.
         """
         self.timer()
-        default_move = (-1, -1)
-        best_move = default_move
+        best_score= float("-inf")
         moves_left = game.get_legal_moves()
-        if len(moves_left) == 0:
-            return default_move
+        if not moves_left:
+            return (-1, -1)
 
-        for move in moves_left:
-            v = self.minvalue(game.forecast_move(move), alpha, beta, depth)
-            if v > alpha:
-                alpha = v
+        best_move = moves_left[0]
+
+        for move in game.get_legal_moves():
+            newboard = game.forecast_move(move)
+            v = self.minvalue(newboard, alpha, beta, depth - 1)
+            if v >= best_score:
                 best_move = move
+                best_score = v
+            alpha = max(alpha, best_score)
 
         return best_move
-
-        
